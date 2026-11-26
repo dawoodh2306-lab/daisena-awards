@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Byla Nr. 1996 Caption Editor</title>
+<style>
+/* Layout: video + timeline pinned on the left, scrolling caption list on the right */
+:root{
+  --bg:#14161a; --panel:#1c1f25; --panel2:#242830; --line:#333944; --fg:#eceae4; --muted:#9299a6;
+  --gold:#d9b24c; --gold-ink:#1a1505; --sel:#2b2f3a; --danger:#e0685c; --ok:#6fc28b;
+  --font:"Inter","Helvetica Neue",Arial,sans-serif; --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.4 var(--font);display:flex;flex-direction:column}
+button,input,textarea,select{font:inherit;color:inherit}
+button{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer;white-space:nowrap}
+button:hover{border-color:var(--muted)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+button.primary{background:var(--gold);color:var(--gold-ink);border-color:var(--gold);font-weight:600}
+button.on{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}
+button.danger{color:var(--danger)}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:15px;margin:0 8px 0 0;letter-spacing:.02em}
+header h1 span{color:var(--gold)}
+.grp{display:flex;gap:4px;align-items:center}
+.spacer{flex:1}
+#status{color:var(--muted);font-size:12px}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)}
+#left{padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:auto;border-right:1px solid var(--line)}
+#stage{position:relative;background:#000;border-radius:8px;overflow:hidden;aspect-ratio:16/9;max-width:100%}
+video{width:100%;height:100%;display:block;background:#000}
+#overlay{position:absolute;left:5%;right:5%;bottom:7%;text-align:center;pointer-events:none;font-weight:600;font-size:clamp(13px,2.1vw,24px);line-height:1.25;color:#fff;text-shadow:0 0 4px #000,0 2px 6px #000,0 0 2px #000;white-space:pre-line}
+#overlay .en{display:block;color:#f3d98a;font-weight:500;font-size:.85em}
+#drop{position:absolute;inset:0;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;background:var(--panel);text-align:center;padding:20px}
+#drop p{margin:0;color:var(--muted);max-width:36ch}
+#transport{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#clock{font-family:var(--mono);font-variant-numeric:tabular-nums;min-width:15ch}
+#rate{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px}
+#tl{position:relative;height:64px;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;touch-action:none;cursor:pointer;user-select:none}
+#tl .tick{position:absolute;top:0;bottom:0;border-left:1px solid var(--line);font:10px var(--mono);color:var(--muted);padding:2px 3px}
+#tl .blk{position:absolute;top:18px;height:38px;background:var(--panel2);border:1px solid var(--muted);border-radius:5px;overflow:hidden;font-size:11px;padding:3px 9px;white-space:nowrap;cursor:grab}
+#tl .blk.cur{background:#4a3f1c;border-color:var(--gold)}
+#tl .hl,#tl .hr{position:absolute;top:0;bottom:0;width:8px;cursor:ew-resize;background:var(--gold);opacity:.55}
+#tl .hl{left:0}#tl .hr{right:0}
+#tl .head{position:absolute;top:0;bottom:0;width:2px;background:var(--danger);pointer-events:none}
+.hint{color:var(--muted);font-size:12px;margin:0}
+kbd{font:11px var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:1px 4px}
+#right{display:flex;flex-direction:column;min-height:0}
+#listbar{display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+#scenes{flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px}
+#list{flex:1;overflow:auto;padding:6px 8px 40vh}
+.scene{display:flex;gap:8px;align-items:center;margin:14px 4px 4px;color:var(--gold);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.scene input{flex:1;background:transparent;border:0;border-bottom:1px dashed transparent;color:var(--gold);font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 0}
+.scene input:hover,.scene input:focus{border-bottom-color:var(--gold)}
+.row{display:grid;grid-template-columns:5.6em minmax(0,1fr);gap:4px 8px;padding:6px;border-radius:8px;border:1px solid transparent}
+.row:hover{background:var(--panel)}
+.row.sel{background:var(--sel);border-color:var(--line)}
+.row.now{border-color:var(--gold)}
+.times{display:flex;flex-direction:column;gap:3px}
+.times input{width:100%;background:transparent;border:1px solid transparent;border-radius:4px;font:12px var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);padding:2px 4px}
+.times input:hover,.times input:focus{border-color:var(--line);color:var(--fg);background:var(--bg)}
+.txt{display:flex;flex-direction:column;gap:3px;min-width:0}
+textarea{width:100%;resize:none;overflow:hidden;background:transparent;border:1px solid transparent;border-radius:5px;padding:3px 6px;line-height:1.35;min-height:1.9em}
+textarea:hover{border-color:var(--line)}
+textarea:focus{background:var(--bg);border-color:var(--line)}
+textarea.en{color:#f3d98a}
+textarea.flag{border-color:var(--danger)}
+body.m-lt textarea.en,body.m-en textarea.lt{display:none}
+.acts{grid-column:1/-1;display:none;flex-wrap:wrap;gap:4px;padding-top:2px}
+.row.sel .acts{display:flex}
+.acts button{font-size:12px;padding:4px 8px}
+@media (max-width:820px){
+  body{height:auto}
+  main{grid-template-columns:1fr}
+  #left{position:sticky;top:0;z-index:5;background:var(--bg);border-right:0;border-bottom:1px solid var(--line);overflow:visible}
+  #list{overflow:visible}
+  .hint{display:none}
+}
+</style>
+</head>
+<body class="m-lt">
+<header>
+  <h1>Daisena <span>Byla Nr. 1996</span> captions</h1>
+  <div class="grp" role="group" aria-label="Language shown">
+    <button id="mLt" class="on">Lithuanian</button><button id="mEn">English</button><button id="mBoth">Both</button>
+  </div>
+  <button id="undo" title="Undo last change (Cmd/Ctrl+Z outside a text box)">Undo</button>
+  <span class="spacer"></span>
+  <span id="status">Changes save in this browser automatically</span>
+  <button id="saveLt" class="primary">Save Lithuanian .srt</button>
+  <button id="saveEn" class="primary">Save English .srt</button>
+  <button id="reset" class="danger">Reset all</button>
+</header>
+<main>
+  <section id="left">
+    <div id="stage">
+      <video id="v" playsinline preload="metadata"></video>
+      <div id="overlay"></div>
+      <div id="drop">
+        <strong>Load the video</strong>
+        <p>Drop "BYLA NR 1996.mp4" here or choose it. The video stays on your computer.</p>
+        <button id="pick" class="primary">Choose video file</button>
+        <input id="file" type="file" accept="video/*" hidden>
+      </div>
+    </div>
+    <div id="transport">
+      <button id="play" class="primary">Play</button>
+      <button id="back">-2s</button><button id="fwd">+2s</button>
+      <span id="clock">0:00.00</span>
+      <select id="rate" aria-label="Playback speed"><option value="0.5">0.5x</option><option value="0.75">0.75x</option><option value="1" selected>1x</option><option value="1.5">1.5x</option></select>
+      <span class="spacer"></span>
+      <button id="add">+ New caption here</button>
+      <button id="pick2">Change video</button>
+    </div>
+    <div id="tl" aria-label="Timeline. Drag a caption to move it, drag its gold edges to change start or end."></div>
+    <p class="hint">Timeline: drag a caption to move it, drag a gold edge to change when it starts or ends. Click empty space to jump there.</p>
+    <p class="hint">Keys (when not typing): <kbd>Space</kbd> play/pause, <kbd>&larr;</kbd> <kbd>&rarr;</kbd> 1s, <kbd>[</kbd> start = now, <kbd>]</kbd> end = now, <kbd>&uarr;</kbd> <kbd>&darr;</kbd> previous/next caption. While typing: <kbd>Cmd/Ctrl+Enter</kbd> splits at the cursor, <kbd>Esc</kbd> leaves the box.</p>
+  </section>
+  <section id="right">
+    <div id="listbar">
+      <label for="scenes">Scene</label>
+      <select id="scenes"></select>
+      <span id="count" class="hint"></span>
+    </div>
+    <div id="list"></div>
+  </section>
+</main>
+<script>
+const ORIGINAL = [{"s": 27040, "e": 31980, "lt": "1996-ieji.", "en": "1996.", "scene": "Įžanga"}, {"s": 32660, "e": 36480, "lt": "Vienas žmogus, viena idėja.", "en": "One man, one idea."}, {"s": 37420, "e": 40520, "lt": "Daugiau nei 30 metų istorijos.", "en": "More than 30 years of history."}, {"s": 40880, "e": 44220, "lt": "Buvo dramų, buvo komedijų,", "en": "There was drama, there was comedy,"}, {"s": 44310, "e": 46710, "lt": "buvo susirinkimų, kurie galėjo tapti", "en": "there were meetings that could have been"}, {"s": 46710, "e": 49410, "lt": "trumpu laišku su šauktuku.", "en": "a short email with an exclamation mark."}, {"s": 49860, "e": 52500, "lt": "Bet šito dar nebuvo.", "en": "But nothing like this had ever happened."}, {"s": 63680, "e": 68780, "lt": "Tai pradėsime tyrimą, bylos numeris 1996.", "en": "So, we'll begin the investigation, case number 1996.", "scene": "Direktorius ir Deimantė"}, {"s": 68980, "e": 70420, "lt": "Viskas bus įrašoma.", "en": "Everything will be recorded."}, {"s": 70420, "e": 73260, "lt": "Ir viskas, ką jūs pasakysite, gali būti", "en": "And anything you say can be"}, {"s": 73260, "e": 74420, "lt": "panaudota prieš jus.", "en": "used against you."}, {"s": 74420, "e": 77160, "lt": "Taigi, Andriau, kada paskutinį kartą matėt", "en": "So, Andrius, when did you last see"}, {"s": 77160, "e": 77780, "lt": "Oskarą?", "en": "the Oscar?"}, {"s": 77780, "e": 80120, "lt": "Vakar. Seife. Tvarkingai padėtą.", "en": "Yesterday. In the safe. Neatly put away."}, {"s": 80120, "e": 84240, "lt": "O šiandien seifas tuščias, aplink betvarkė.", "en": "And today the safe is empty, and everything's a mess."}, {"s": 84240, "e": 86450, "lt": "Nu žiūrėkit, nusiimkime tą stresą, resursų", "en": "Look, let's take the stress out of this,"}, {"s": 86450, "e": 86970, "lt": "turime.", "en": "we've got the resources."}, {"s": 86970, "e": 88930, "lt": "O kas galėjo čia taip viską sujaukti?", "en": "So who could have made such a mess?"}, {"s": 88930, "e": 91430, "lt": "Deimantė. O jūs matėt jos stalą?", "en": "Deimantė. Have you seen her desk?"}, {"s": 91550, "e": 94970, "lt": "Nes jūsų stalas atrodo lyg po apiplėšimo.", "en": "Because your desk looks like it's been robbed."}, {"s": 98530, "e": 101230, "lt": "Na, jeigu aš jau jį pavogčiau, jūs jo tikrai", "en": "Well, if I had stolen it, you'd definitely"}, {"s": 101230, "e": 102590, "lt": "nerastumėte.", "en": "never find it."}, {"s": 102880, "e": 104780, "lt": "Įdomus prisipažinimas.", "en": "Interesting confession."}, {"s": 104780, "e": 107880, "lt": "O jūs apie agentus nepagalvojot? Jie visą", "en": "Have you thought about the agents? They're always"}, {"s": 107880, "e": 109660, "lt": "laiką naujų produktų prašo.", "en": "asking for new products."}, {"s": 109680, "e": 111500, "lt": "Tai gal Oskarą sugalvojo parduoti?", "en": "Maybe they decided to sell the Oscar?"}, {"s": 112990, "e": 115450, "lt": "Gerai, kolegos, kokios problemos rinkoje?", "en": "Right, colleagues, what problems are we seeing in the market?", "scene": "Agentų susirinkimas"}, {"s": 116670, "e": 118720, "lt": "Mums reikia naujų produktų.", "en": "We need new products."}, {"s": 118720, "e": 121730, "lt": "Šiaip tai jo, nes visko privežė, kažko reikėtų", "en": "Well, yeah, they've stocked up on everything,"}, {"s": 121820, "e": 122370, "lt": "panaudoti.", "en": "we need something to use."}, {"s": 122370, "e": 124380, "lt": "Ir kaip galėtų naujų produktų?", "en": "And how could we get new products?"}, {"s": 124380, "e": 126080, "lt": "Reikia, kaip visiems.", "en": "We need it, like everyone."}, {"s": 126080, "e": 129540, "lt": "Laba diena, mes Oskaro vagystę tiriam.", "en": "Hello, we're investigating the theft of the Oscar."}, {"s": 130180, "e": 132100, "lt": "Oskaro? Čia kas, tas naujas produktas?", "en": "The Oscar? What, is that the new product?"}, {"s": 132100, "e": 134110, "lt": "Ne, statulėlė, dingo iš direktoriaus", "en": "No, a statuette, it disappeared from the director's"}, {"s": 134110, "e": 134690, "lt": "kabineto.", "en": "office."}, {"s": 134690, "e": 136000, "lt": "O kiek vienetų jų turėjot?", "en": "And how many units did you have?"}, {"s": 136000, "e": 136830, "lt": "Vieną.", "en": "One."}, {"s": 136830, "e": 138500, "lt": "Tai prasme vieną? O tai kaip mes su vienu", "en": "What do you mean, one? How are we going"}, {"s": 138500, "e": 139270, "lt": "į rinką eisim?", "en": "to market with one?"}, {"s": 139490, "e": 141630, "lt": "Čia vagystę mes tiriam, tik vieną.", "en": "We're investigating a theft here, just the one."}, {"s": 141730, "e": 143650, "lt": "O tai tiekime nėra? Kokiam dar tiekime?", "en": "So there's no stock in supply? What supply?"}, {"s": 143850, "e": 145130, "lt": "Gerai, kolegos, ramiai.", "en": "Right, colleagues, calm down."}, {"s": 145790, "e": 147330, "lt": "Pirmiausia išsiaiškinsim dėl papildymo.", "en": "First let's find out about the restock."}, {"s": 147890, "e": 149780, "lt": "Gerai, Asta, viskas aišku, einam.", "en": "Okay, Asta, that's clear, let's go."}, {"s": 151690, "e": 153810, "lt": "Iškart sakau, tašės neatidarinėsiu.", "en": "I'll tell you right away, I'm not opening my bag.", "scene": "Julija"}, {"s": 155790, "e": 157780, "lt": "O kodėl jūs nenorite atidaryti tašės?", "en": "And why don't you want to open the bag?"}, {"s": 158270, "e": 160210, "lt": "Nes po to visko vėl nesudėsiu.", "en": "Because I'll never fit everything back in."}, {"s": 161910, "e": 164450, "lt": "Bet gal galėtų tilpti tavo Oskaras į ją?", "en": "But could your Oscar fit in there?"}, {"s": 166940, "e": 170060, "lt": "Tilptų ir ne vienas, ir dar vietos liktų.", "en": "More than one would fit, with room to spare."}, {"s": 170750, "e": 173850, "lt": "O jūs čia į darbą ar į komandiruotę", "en": "Are you here for work or going"}, {"s": 189660, "e": 190060, "lt": "susiruošėt?", "en": "on a business trip?"}, {"s": 190060, "e": 192380, "lt": "Čia dar tik būtiniausi daiktai.", "en": "These are just the essentials."}, {"s": 192380, "e": 193510, "lt": "O kam jums tiek?", "en": "And why do you need so much?"}, {"s": 193510, "e": 195980, "lt": "Nežinau, o jei prireiks?", "en": "I don't know, what if I need it?"}, {"s": 195980, "e": 198480, "lt": "Jūs geriau Sandrą patikrinkit.", "en": "You should check Sandra instead."}, {"s": 198550, "e": 200510, "lt": "Ji įkalčių nepalieka, tik kvapą.", "en": "She never leaves evidence, just a scent."}, {"s": 200510, "e": 203480, "lt": "Prie seifo jautėsi labai stiprus kvepalų", "en": "There was a very strong perfume", "scene": "Sandra"}, {"s": 207940, "e": 208470, "lt": "kvapas.", "en": "smell near the safe."}, {"s": 208470, "e": 209470, "lt": "Na ir?", "en": "So?"}, {"s": 209470, "e": 211970, "lt": "Bet galėjot ten būti.", "en": "But you could have been there."}, {"s": 213250, "e": 215690, "lt": "Pagal jus aš Daisenoj visur vienu metu", "en": "So by your logic I can be everywhere"}, {"s": 215690, "e": 216310, "lt": "galiu būti?", "en": "in Daisena at the same time?"}, {"s": 216310, "e": 218310, "lt": "O gal bent per apklausą nesipurkštumėt?", "en": "Could you at least stop spraying during the interrogation?"}, {"s": 219530, "e": 220780, "lt": "Ne, negaliu.", "en": "No, I can't."}, {"s": 220780, "e": 223280, "lt": "Čia paskutinis.", "en": "This is the last one."}, {"s": 224800, "e": 227920, "lt": "Ой, сорри, щас перезвоню я тебе.", "en": "Oh, sorry, I'll call you back.", "scene": "Vitalijus"}, {"s": 235350, "e": 237490, "lt": "Да, да, сейчас всё решим.", "en": "Yes, yes, we'll sort it out now."}, {"s": 238550, "e": 242220, "lt": "Нет, ну ты посмотри там, я тебе говорю.", "en": "No, well, look at it, I'm telling you."}, {"s": 242900, "e": 246520, "lt": "Да, да, ну всё, договорились, давай, пока.", "en": "Yes, yes, that's it, agreed, okay, bye."}, {"s": 247580, "e": 249120, "lt": "Tai klausau.", "en": "Right, I'm listening."}, {"s": 250930, "e": 253290, "lt": "Vitalijau, girdėjom, kad jūs labai mėgstat", "en": "Vitalijus, we hear you really like"}, {"s": 253290, "e": 255910, "lt": "lauke su klientais kalbėti berūkydamas?", "en": "talking to clients outside while smoking?"}, {"s": 256530, "e": 258690, "lt": "Nu, taip, ten ryšys geresnis.", "en": "Well, yes, the signal's better out there."}, {"s": 259120, "e": 261250, "lt": "O kabinete blogas ryšys? Kas jums su tuo", "en": "And the signal's bad in your office? What's with you"}, {"s": 261250, "e": 261860, "lt": "lauku?", "en": "and the outside?"}, {"s": 262190, "e": 263270, "lt": "Lauke geresnis.", "en": "It's better outside."}, {"s": 263720, "e": 265280, "lt": "Kur buvot, kai dingo Oskaras?", "en": "Where were you when the Oscar disappeared?"}, {"s": 265800, "e": 267870, "lt": "Lauke, su klientu kalbėjau.", "en": "Outside, talking to a client."}, {"s": 267870, "e": 269650, "lt": "Ar galite tai įrodyti?", "en": "Can you prove it?"}, {"s": 270200, "e": 273160, "lt": "Galiu, tuoj paskambinsiu, tik išeisiu.", "en": "Sure, I'll call him now, just let me step outside."}, {"s": 273560, "e": 275170, "lt": "Ne, čia, čia skambinkit.", "en": "No, here, call him here."}, {"s": 275390, "e": 276380, "lt": "Čia?", "en": "Here?"}, {"s": 279120, "e": 281920, "lt": "Алло, да, секунду, я выйду.", "en": "Hello, yes, one second, I'll step out."}, {"s": 283140, "e": 284600, "lt": "Vitalijau, sėskit, sėskit čia.", "en": "Vitalijus, sit down, sit down here."}, {"s": 284880, "e": 286780, "lt": "Tai galbūt į balkoną galiu išeiti?", "en": "So maybe I can go out on the balcony?"}, {"s": 287170, "e": 288930, "lt": "Audriau, o kodėl kiekvieną rytą apsukat", "en": "Audrius, why do you do a lap", "scene": "Audrius"}, {"s": 288930, "e": 289960, "lt": "ratą aplink aikštelę?", "en": "around the car park every morning?"}, {"s": 290290, "e": 291590, "lt": "Išsiaiškint – kamuolys tavo rankose.", "en": "Find out – the ball is in your court."}, {"s": 292170, "e": 293430, "lt": "Ne, tai aš jūsų klausiu.", "en": "No, I'm asking you."}, {"s": 294110, "e": 295770, "lt": "Išsiaiškint – kamuolys tavo rankose.", "en": "Find out – the ball is in your court."}, {"s": 296080, "e": 298600, "lt": "Audriau, bet mes tiriam Oskaro vagystę.", "en": "Audrius, but we're investigating the Oscar theft."}, {"s": 299760, "e": 301660, "lt": "Išsiaiškint, kas vakar rūkė.", "en": "Find out who smoked yesterday."}, {"s": 310490, "e": 311910, "lt": "Apie įsilaužimus, šiandien ryte siunčiau.", "en": "About hacking, I sent it this morning.", "scene": "Gintaras ir kameros"}, {"s": 312190, "e": 313910, "lt": "Gintarai, mes Oskaro vagystę tiriam.", "en": "Gintaras, we're investigating the Oscar theft."}, {"s": 314260, "e": 315730, "lt": "O nuo ko viskas prasideda?", "en": "And how does it all start?"}, {"s": 315950, "e": 317470, "lt": "Nuo vieno neatsargaus paspaudimo.", "en": "With one careless click."}, {"s": 318750, "e": 321460, "lt": "Bet gal mes galim tiesiog pasižiūrėti kameras?", "en": "Can we just look at the cameras?"}, {"s": 322190, "e": 323970, "lt": "Palaukit, kas čia dainuoja?", "en": "Wait, who's singing?"}, {"s": 325340, "e": 326500, "lt": "Kameros be garso.", "en": "The cameras have no sound."}, {"s": 333440, "e": 337120, "lt": "Aš jums sakau, čia bus Vilmantas ir Vidmantas.", "en": "I'm telling you, it was Vilmantas and Vidmantas.", "scene": "Marketingas"}, {"s": 337970, "e": 339530, "lt": "Jie pastoviai kažką rezga.", "en": "They're always plotting something."}, {"s": 340230, "e": 341130, "lt": "O kodėl jūs abu atėjot?", "en": "Why did you both come?"}, {"s": 341270, "e": 342310, "lt": "Mes po vieną kvietėme.", "en": "We invited you one at a time."}, {"s": 342700, "e": 345850, "lt": "Tai mes kartu, kaip visada, kartu.", "en": "We come together, like always, together."}, {"s": 345850, "e": 347410, "lt": "O kur buvot vagystės metu?", "en": "And where were you at the time of the theft?"}, {"s": 348040, "e": 350320, "lt": "Tai kartu, kaip visada.", "en": "Together, like always."}, {"s": 350620, "e": 352820, "lt": "O kuris pirmas atėjo į darbą?", "en": "And which of you got to work first?"}, {"s": 352820, "e": 354860, "lt": "Tai aš pirmas atėjau, šiandien aš.", "en": "I got here first, today it was me."}, {"s": 354860, "e": 356930, "lt": "Aš pirmas atėjau, aš.", "en": "I got here first, me."}, {"s": 356930, "e": 358300, "lt": "Aš pirmas atėjau.", "en": "I got here first."}, {"s": 358300, "e": 359780, "lt": "Gerai, Vilmantai.", "en": "Okay, Vilmantas."}, {"s": 359780, "e": 360860, "lt": "Aš Vilmantas.", "en": "I'm Vilmantas."}, {"s": 360860, "e": 361860, "lt": "Gerai, Vilmantai.", "en": "Okay, Vilmantas."}, {"s": 361860, "e": 363340, "lt": "Aš Vilmantas.", "en": "I'm Vilmantas."}, {"s": 363340, "e": 365850, "lt": "Asta, užrašyk abu įtariamuosius.", "en": "Asta, write down both as suspects."}, {"s": 365850, "e": 367570, "lt": "Ką reikia padaryti?", "en": "What needs doing?", "scene": "Adelė"}, {"s": 372160, "e": 373310, "lt": "Kuo galiu padėti?", "en": "How can I help?"}, {"s": 373310, "e": 374920, "lt": "Gal kažką padaryti?", "en": "Maybe I can do something?"}, {"s": 374920, "e": 376470, "lt": "Mes čia jus apklausti norim.", "en": "We're here to question you."}, {"s": 376470, "e": 379710, "lt": "Jo, viskas gerai, aišku, bet aš galiu ir", "en": "Yeah, sure, of course, but I can also"}, {"s": 379710, "e": 381020, "lt": "Oskarą padėti ieškoti.", "en": "help look for the Oscar."}, {"s": 381020, "e": 383850, "lt": "Nereikia, mes jau tikrinam visus kabinetus", "en": "No need, we're already checking every office"}, {"s": 383850, "e": 384990, "lt": "[neaišku]", "en": "[UNCLEAR]"}, {"s": 384990, "e": 387850, "lt": "O sandėlį? Sandėlį tikrinot? Aš galiu nuvažiuoti.", "en": "And the warehouse? Did you check it? I can drive there."}, {"s": 387850, "e": 390450, "lt": "Sandėlis tam pačiam pastate, patikrinsiu.", "en": "The warehouse is in the same building, I'll check it."}, {"s": 390450, "e": 391870, "lt": "Tai viskas gerai, galiu nueiti.", "en": "That's fine, I can walk there."}, {"s": 391870, "e": 395630, "lt": "Adele, o kur jūs pati buvot tuo metu, kai dingo?", "en": "Adelė, where were you yourself when it disappeared?"}, {"s": 395630, "e": 397730, "lt": "Darbe, bet žinokit, jeigu reikia, aš", "en": "At work, but you know, if you need, I"}, {"s": 397730, "e": 399030, "lt": "galiu paklausinėti kolektyvo.", "en": "can question the team."}, {"s": 399030, "e": 401150, "lt": "Tai mes jau turim detektyves, viskas gerai.", "en": "We already have detectives, it's fine."}, {"s": 401150, "e": 403510, "lt": "Tai gerai, jeigu reikės trečios, jūs man", "en": "Okay then, if you need a third one,"}, {"s": 403850, "e": 404700, "lt": "paskambinkite.", "en": "just call me."}, {"s": 404700, "e": 405700, "lt": "Sutarta.", "en": "Deal."}, {"s": 405980, "e": 407770, "lt": "Mes ją bent apklausėme?", "en": "Did we even question her?"}, {"s": 411100, "e": 414930, "lt": "Gerai, kolegos, šiandien pradedam, trumpai.", "en": "Right, colleagues, let's begin, short one today.", "scene": "Eksporto susirinkimas"}, {"s": 417330, "e": 420720, "lt": "Irma, mes dar nepradėjom. Gerai, Lukai,", "en": "Irma, we haven't even started. Okay, Lukas,"}, {"s": 422360, "e": 423290, "lt": "tavo rinkos.", "en": "your markets."}, {"s": 423970, "e": 426000, "lt": "Tai pas mane Suomijoj viskas lėtai,", "en": "So for me, everything's slow in Finland,"}, {"s": 426000, "e": 428440, "lt": "Katare viskas skubiai, o Palestinoj iš", "en": "in Qatar everything's urgent, and in Palestine"}, {"s": 428440, "e": 429760, "lt": "viso niekas neaišku.", "en": "nothing's clear at all."}, {"s": 430280, "e": 436350, "lt": "Ok, gerai, einam prie Dimos. Dima! Tu, Arvydai,", "en": "Okay, fine, let's move on to Dima. Dima! Hey, Arvydas,"}, {"s": 438240, "e": 440740, "lt": "ką tu čia pieši?", "en": "what are you drawing there?"}, {"s": 441770, "e": 444230, "lt": "Oskaro eksporto deklaraciją ruošiu, dėl viso", "en": "Preparing an export declaration for the Oscar,"}, {"s": 444230, "e": 444590, "lt": "ko.", "en": "just in case."}, {"s": 445700, "e": 447880, "lt": "Andriau, per kiek laiko, jūsų manymu, užtruktų", "en": "Andrius, how long do you think it would take", "scene": "Balžaris"}, {"s": 448760, "e": 449690, "lt": "pavogti Oskarą?", "en": "to steal the Oscar?"}, {"s": 450000, "e": 451960, "lt": "Per laiko vienetą viską galima padaryti.", "en": "You can do anything within a unit of time."}, {"s": 451960, "e": 453620, "lt": "Kokį laiko vienetą?", "en": "What unit of time?"}, {"s": 454210, "e": 455660, "lt": "Priklauso nuo situacijos.", "en": "It depends on the situation."}, {"s": 456300, "e": 457900, "lt": "Minutę, valandą, dieną?", "en": "A minute, an hour, a day?"}, {"s": 458570, "e": 460110, "lt": "Svarbiausia, kad būtų rezultatas.", "en": "What matters is the result."}, {"s": 460540, "e": 462820, "lt": "Asta, užrašyk, kad įtariamasis neturi laiko suvokimo.", "en": "Asta, write down that the suspect has no concept of time."}, {"s": 472510, "e": 473310, "lt": "Kolegos,", "en": "Colleagues,", "scene": "Kavos kapsulė"}, {"s": 473630, "e": 474810, "lt": "prie direktoriaus kabineto", "en": "near the director's office"}, {"s": 475400, "e": 476280, "lt": "radom šitą.", "en": "we found this."}, {"s": 477510, "e": 478490, "lt": "Kavos kapsulę.", "en": "A coffee capsule."}, {"s": 480770, "e": 483110, "lt": "Kur visi buvot ketvirtadienį dešimtą valandą?", "en": "Where were you all on Thursday at ten o'clock?"}, {"s": 483980, "e": 484940, "lt": "Gėrėm kavą.", "en": "Drinking coffee."}, {"s": 485450, "e": 486430, "lt": "O penkioliktą?", "en": "And at three?"}, {"s": 486820, "e": 488000, "lt": "Gėrėm kavą.", "en": "Drinking coffee."}, {"s": 488630, "e": 490820, "lt": "O ką veikėt tarp dešimtos ir penkioliktos?", "en": "And what were you doing between ten and three?"}, {"s": 491020, "e": 493620, "lt": "Dirbau labai produktyviai ir smagiai.", "en": "I was working very productively and having fun."}, {"s": 494030, "e": 494890, "lt": "Visas skyrius?", "en": "The whole department?"}, {"s": 494890, "e": 495680, "lt": "Jo.", "en": "Yeah."}, {"s": 496390, "e": 499190, "lt": "O tai kas žino, kiek jūs išgeriat apskritai", "en": "So who knows how much you drink"}, {"s": 499190, "e": 500460, "lt": "tos kavos?", "en": "of that coffee in total?"}, {"s": 501010, "e": 502830, "lt": "[neaišku]", "en": "[UNCLEAR]", "scene": "Lukas"}, {"s": 507410, "e": 508710, "lt": "Noriu.", "en": "I do."}, {"s": 512190, "e": 515540, "lt": "Dabar kai mes jus pakviesti į [neaišku],", "en": "Now when we invite you to [UNCLEAR],"}, {"s": 515540, "e": 516290, "lt": "pakviesti...", "en": "invite..."}, {"s": 516290, "e": 519910, "lt": "Į kambarį, į kambarį.", "en": "To the room, to the room."}, {"s": 520280, "e": 521820, "lt": "[neaišku]", "en": "[UNCLEAR]"}, {"s": 523530, "e": 525830, "lt": "Šitą įtartinam, bet neapžiūrėkit.", "en": "This one's suspicious, but don't look."}, {"s": 526850, "e": 529450, "lt": "Lukai, mums reikia sužinoti, kiek kapsulių per dieną", "en": "Lukas, we need to find out how many capsules a day"}, {"s": 529450, "e": 530470, "lt": "sunaudojama biure.", "en": "are used in the office."}, {"s": 530470, "e": 533560, "lt": "Čia, tai čia gustinės, espresinės, o...", "en": "So, there's lungo, espresso, and..."}, {"s": 533560, "e": 535950, "lt": "Jeigu mes žiūrėtumėm, ar tai turi būti", "en": "If we look at it, does it have to be"}, {"s": 535950, "e": 537090, "lt": "desertinės kapsulės,", "en": "dessert capsules,"}, {"s": 537090, "e": 539520, "lt": "ar pagal grupes mes darysim dabar, ar koks", "en": "or will we do it by group now, or what"}, {"s": 539520, "e": 540500, "lt": "jisai mūsų būtų planas?", "en": "would our plan be?"}, {"s": 540970, "e": 543970, "lt": "Nežinau, dar vieni žmonės atostogauja, važiuoja", "en": "I don't know, some people are on holiday, some go"}, {"s": 544050, "e": 546020, "lt": "į komandiruotes, net nei proporcinę statistiką,", "en": "on business trips, so it's neither proportional statistics"}, {"s": 546020, "e": 547570, "lt": "nei struktūrinę statistiką.", "en": "nor structural statistics."}, {"s": 548730, "e": 550520, "lt": "Kas dabar mums svarbiausia būtų?", "en": "What would matter most to us now?"}, {"s": 551560, "e": 552310, "lt": "Nesuprantu dabar.", "en": "I don't understand now."}, {"s": 552700, "e": 553350, "lt": "Nuo ko pradėti?", "en": "Where to start?"}, {"s": 554220, "e": 557460, "lt": "Jeigu Oskarą kažkas išnešė, galėjo paslėpti", "en": "If someone carried the Oscar out, they could have hidden it", "scene": "Sandėlis"}, {"s": 557460, "e": 559480, "lt": "sandėlyje tarp prekių.", "en": "in the warehouse among the goods."}, {"s": 559920, "e": 561900, "lt": "Kiek palečių yra sandėlyje?", "en": "How many pallets are in the warehouse?"}, {"s": 562160, "e": 563460, "lt": "Gal reikia Luko paklausti?", "en": "Maybe we should ask Lukas?"}, {"s": 563500, "e": 564500, "lt": "Ne, Luko neklausk.", "en": "No, don't ask Lukas."}, {"s": 568810, "e": 570090, "lt": "Radai kažką?", "en": "Found anything?"}, {"s": 576530, "e": 577670, "lt": "Ne, tik [neaišku].", "en": "No, just [UNCLEAR]."}, {"s": 583550, "e": 586450, "lt": "Modestai, turim dingusį Oskarą, gal matėt?", "en": "Modestas, we've got a missing Oscar, have you seen it?"}, {"s": 587550, "e": 589040, "lt": "Ne, tokio nekroviau.", "en": "No, haven't loaded one of those."}, {"s": 589410, "e": 592290, "lt": "O gal turite įtarimų, kas galėtų jį turėti,", "en": "Do you suspect anyone who might have it,"}, {"s": 592290, "e": 593630, "lt": "pavogti, paimti?", "en": "stolen it, taken it?"}, {"s": 594080, "e": 596950, "lt": "Sunku pasakyti, bet čia Paulius vis vaikštinėja.", "en": "Hard to say, but Paulius keeps wandering around here."}, {"s": 597330, "e": 599110, "lt": "Galbūt, apie visokius kaulus tenai", "en": "Maybe, about all sorts of bones over there,"}, {"s": 599110, "e": 599670, "lt": "kažkokius.", "en": "some kind."}, {"s": 600730, "e": 602760, "lt": "Pauliau, dingo Oskaras, įtariam, kad", "en": "Paulius, the Oscar is missing, we suspect it", "scene": "Paulius"}, {"s": 605390, "e": 607440, "lt": "galėjo būti išvežtas iš įmonės.", "en": "may have been taken out of the company."}, {"s": 609090, "e": 610310, "lt": "Viskas bus kaulas.", "en": "It'll be a bone."}, {"s": 610950, "e": 611730, "lt": "Kas bus?", "en": "It'll be what?"}, {"s": 611730, "e": 613940, "lt": "Radom šitą nusikaltimo vietoj.", "en": "We found this at the crime scene."}, {"s": 626440, "e": 627360, "lt": "Nu ir?", "en": "So?"}, {"s": 627810, "e": 628700, "lt": "Kas „nu ir“?", "en": "What do you mean, \"so\"?"}, {"s": 629640, "e": 631240, "lt": "Čia ne kaulas, kaulėlis.", "en": "That's not a bone, it's a little bone."}, {"s": 633380, "e": 634060, "lt": "Jūsų?", "en": "Yours?"}, {"s": 634480, "e": 634920, "lt": "Ne.", "en": "No."}, {"s": 635580, "e": 637100, "lt": "[neaišku]", "en": "[UNCLEAR]"}, {"s": 638700, "e": 642100, "lt": "O jeigu kažkas bandė seifą atidaryti jėga?", "en": "What if someone tried to force the safe open?", "scene": "Algelis"}, {"s": 643320, "e": 645090, "lt": "Kas Daisenoj gali atidaryti", "en": "Who at Daisena can open"}, {"s": 645410, "e": 645950, "lt": "bet ką?", "en": "absolutely anything?"}, {"s": 646740, "e": 649330, "lt": "Algeli, jūs visada su plaktuku vaikštot?", "en": "Algelis, do you always walk around with a hammer?"}, {"s": 649550, "e": 650050, "lt": "Kai reikia.", "en": "When needed."}, {"s": 650380, "e": 651260, "lt": "O dabar reikia?", "en": "And do you need one now?"}, {"s": 651510, "e": 652010, "lt": "Kvietėt.", "en": "You called me in."}, {"s": 652540, "e": 654460, "lt": "O kiek jūs metų Daisenoj dirbat?", "en": "How many years have you worked at Daisena?"}, {"s": 654600, "e": 656500, "lt": "Virš 28, visus kampus žinau.", "en": "Over 28, I know every corner."}, {"s": 657000, "e": 658930, "lt": "Su šituo plaktuku galima seifą atidaryti?", "en": "Can you open a safe with this hammer?"}, {"s": 659230, "e": 659820, "lt": "Be abejo.", "en": "No doubt."}, {"s": 659820, "e": 660820, "lt": "O jūs mokėtumėt?", "en": "And would you know how?"}, {"s": 661560, "e": 662720, "lt": "Taip, be problemų.", "en": "Yes, no problem."}, {"s": 662900, "e": 664880, "lt": "Ne, ne, nereikia, nereikia, nereikia.", "en": "No, no, no need, no need, no need."}, {"s": 665900, "e": 668040, "lt": "O kas žino, kur yra atsarginiai raktai?", "en": "And who knows where the spare keys are?"}, {"s": 668250, "e": 668790, "lt": "Brigita.", "en": "Brigita."}, {"s": 671930, "e": 675750, "lt": "Jeigu Oskaras yra turtas, logiškai mąstant,", "en": "If the Oscar is a company asset, logically speaking,", "scene": "Buhalterija"}, {"s": 676120, "e": 678050, "lt": "tai gal buhalterija turės kokios", "en": "maybe Accounting will have some"}, {"s": 678050, "e": 679390, "lt": "informacijos apie jį?", "en": "information about it?"}, {"s": 679680, "e": 681270, "lt": "Čia bent kažkas dokumentus turi?", "en": "Does at least someone here have paperwork?"}, {"s": 681730, "e": 684210, "lt": "Laba diena, mes dėl dingusio Oskaro.", "en": "Hello, we're here about the missing Oscar."}, {"s": 696190, "e": 698690, "lt": "O sąskaitą turit?", "en": "Do you have the invoice?"}, {"s": 699770, "e": 700710, "lt": "Kokią sąskaitą?", "en": "What invoice?"}, {"s": 700730, "e": 701870, "lt": "Nu, Oskaro.", "en": "Well, for the Oscar."}, {"s": 702290, "e": 704630, "lt": "Mes nežinom, kur Oskaras, mes jo ieškom.", "en": "We don't know where the Oscar is, we're looking for it."}, {"s": 705130, "e": 706930, "lt": "Tai kaip jūs jį apskaitysit?", "en": "Then how are you going to put it on the books?"}, {"s": 707070, "e": 709670, "lt": "Tai mes nenorim apskaityti, mes norim rasti.", "en": "We don't want to put it on the books, we want to find it."}, {"s": 710400, "e": 712960, "lt": "Tai gal tiesiog nurašom ir nebeieškom?", "en": "Why don't we just write it off and stop looking?"}, {"s": 712990, "e": 715850, "lt": "Bet nurašymui vis tiek sąskaitos reikės?", "en": "But won't we still need the invoice to write it off?"}, {"s": 717230, "e": 718250, "lt": "Sąskaitos.", "en": "The invoice."}, {"s": 719340, "e": 721860, "lt": "Aldai, gal bent jūs žinot, kur Oskaras?", "en": "Aldas, do you at least know where the Oscar is?", "scene": "Aldas"}, {"s": 724620, "e": 726340, "lt": "Ne, bet jeigu reikia, galiu parvežti.", "en": "No, but if you need, I can bring it back."}, {"s": 726760, "e": 727690, "lt": "Iš kur parvežti?", "en": "Bring it back from where?"}, {"s": 727970, "e": 729370, "lt": "Tai jūs atsiųskit man adresą.", "en": "Just send me the address."}, {"s": 730330, "e": 733200, "lt": "Asta, turim dar vieną skyrių, kurio neapklausėm.", "en": "Asta, there's one more department we haven't questioned.", "scene": "Apskaita"}, {"s": 733990, "e": 734510, "lt": "Kokį?", "en": "Which one?"}, {"s": 735020, "e": 736710, "lt": "Apskaitą, bet apie juos gavom labai keistos", "en": "Accounts, but we've received some very strange"}, {"s": 736710, "e": 739110, "lt": "informacijos, kad darbas padarytas, darbuotojų", "en": "information about them, that the work gets done,"}, {"s": 739110, "e": 739900, "lt": "niekas nematė.", "en": "but nobody has seen the staff."}, {"s": 740000, "e": 743190, "lt": "Mūsų Daisenoj yra skyrius, niekas jų nematė,", "en": "There's a department at Daisena, nobody's seen them,"}, {"s": 745070, "e": 748590, "lt": "niekas jų nežino. Nežinau, lyg Apskaita", "en": "nobody knows them. I don't know, I think it's called"}, {"s": 748670, "e": 749620, "lt": "vadinasi.", "en": "Accounts."}, {"s": 749620, "e": 754540, "lt": "Dirba trys moterytės: Laima, Rimantė, Virginija,", "en": "Three women work there: Laima, Rimantė, Virginija,"}, {"s": 754830, "e": 758220, "lt": "[neaišku], bet niekas jų niekada", "en": "[UNCLEAR], but nobody ever"}, {"s": 759600, "e": 760090, "lt": "nemato.", "en": "sees them."}, {"s": 761460, "e": 764980, "lt": "Kartais iš jų ateina laiškai, kartais paprašo", "en": "Sometimes you get emails from them, sometimes they ask"}, {"s": 765660, "e": 769280, "lt": "dokumentų, bet ar kas nors iš tikrųjų jas matė –", "en": "for documents, but has anyone actually seen them –"}, {"s": 769580, "e": 771520, "lt": "tai klausimas geras.", "en": "that's a good question."}, {"s": 774400, "e": 775440, "lt": "Laba diena.", "en": "Hello."}, {"s": 777970, "e": 779710, "lt": "Laba diena, mes dėl dingusio Oskaro.", "en": "Hello, we're here about the missing Oscar."}, {"s": 780330, "e": 781940, "lt": "O jūs kaip mus radot?", "en": "How did you find us?"}, {"s": 782250, "e": 783270, "lt": "Mes žinom, kur jūs sėdit.", "en": "We know where you sit."}, {"s": 784100, "e": 785050, "lt": "Keista.", "en": "Strange."}, {"s": 785470, "e": 787130, "lt": "Paprastai čia niekas neužeina.", "en": "Nobody normally comes in here."}, {"s": 787350, "e": 789480, "lt": "Virginija, mes jums vakar siuntėm laišką dėl", "en": "Virginija, we sent you an email yesterday about"}, {"s": 789480, "e": 790130, "lt": "Oskaro.", "en": "the Oscar."}, {"s": 790130, "e": 792470, "lt": "Taip, gavau. – Bet jūs atrašėt „Ačiū“.", "en": "Yes, I got it. – But you replied \"Thank you.\""}, {"s": 792780, "e": 793290, "lt": "Taip.", "en": "Yes."}, {"s": 793900, "e": 794670, "lt": "Bet ten buvo klausimas.", "en": "But it was a question."}, {"s": 796450, "e": 797720, "lt": "Gerai, gal eisim.", "en": "Okay, maybe we'll go."}, {"s": 798320, "e": 799060, "lt": "Ačiū.", "en": "Thank you."}, {"s": 801440, "e": 803480, "lt": "Sveiki, mums reikia pasikalbėti su Naste.", "en": "Hi, we need to speak to Nastė.", "scene": "Pardavimai"}, {"s": 805280, "e": 808090, "lt": "Jo, jo, mačiau, tuoj užgesinsiu.", "en": "Yeah, yeah, I saw it, I'll put it out in a minute."}, {"s": 808550, "e": 809710, "lt": "Kas nutiko, kas dega?", "en": "What's happened, what's on fire?"}, {"s": 809810, "e": 812250, "lt": "Niekas nedega, mes dėl dingusio Oskaro.", "en": "Nothing's on fire, we're here about the missing Oscar."}, {"s": 812670, "e": 813670, "lt": "Ne mano gaisras.", "en": "Not my fire."}, {"s": 814150, "e": 816260, "lt": "O, Naste, ar matėt ką įtartino prie Andriaus", "en": "Nastė, did you see anything suspicious near Andrius's"}, {"s": 816260, "e": 816930, "lt": "kabineto?", "en": "office?"}, {"s": 817170, "e": 819410, "lt": "Nežinau, vakar visą dieną gaisrus gesinau.", "en": "I don't know, I spent all day yesterday putting out fires."}, {"s": 819930, "e": 821300, "lt": "Kokius gaisrus?", "en": "What fires?"}, {"s": 822000, "e": 823150, "lt": "Darbinius gaisrus.", "en": "Work fires."}, {"s": 823540, "e": 824890, "lt": "Naste, pas tave vėl dega.", "en": "Nastė, it's on fire at yours again."}, {"s": 826210, "e": 827370, "lt": "Žinau, žinau.", "en": "I know, I know."}, {"s": 831260, "e": 832370, "lt": "Laikyk.", "en": "Here."}, {"s": 836410, "e": 838790, "lt": "Čia dar nieko, vakar blogiau buvo.", "en": "This is nothing, yesterday was worse."}, {"s": 841390, "e": 842410, "lt": "Čia pas jus visada taip?", "en": "Is it always like this here?"}, {"s": 842490, "e": 842780, "lt": "Taip.", "en": "Yes."}, {"s": 843410, "e": 846010, "lt": "Gerai, tai kas man galėtų pasakyti, kas lankėsi", "en": "Okay, so who could tell me who visited"}, {"s": 846010, "e": 846890, "lt": "pas direktorių?", "en": "the director?"}, {"s": 847190, "e": 848850, "lt": "Tai Brigita, ji viską žino.", "en": "Brigita, she knows everything."}, {"s": 849170, "e": 850600, "lt": "Nemažai apklausėm:", "en": "We've questioned quite a few:", "scene": "Brigita"}, {"s": 851080, "e": 854160, "lt": "Deimantę, Mindaugą, Algelį, pardavimų", "en": "Deimantė, Mindaugas, Algelis, the sales"}, {"s": 854160, "e": 857110, "lt": "skyrių, Vilmantą, Vidmantą, Adelę.", "en": "department, Vilmantas, Vidmantas, Adelė."}, {"s": 857680, "e": 859260, "lt": "Įtariamųjų ratas siaurėja?", "en": "Is the circle of suspects narrowing?"}, {"s": 860460, "e": 862670, "lt": "Daug kas paminėjo Brigitos vardą.", "en": "A lot of them mentioned Brigita's name."}, {"s": 864030, "e": 866540, "lt": "Man atrodo, reiks su ja pasikalbėti.", "en": "I think we need to talk to her."}, {"s": 866540, "e": 868830, "lt": "Algelis sako, žinot, kur yra atsarginiai", "en": "Algelis says you know where the spare"}, {"s": 871660, "e": 872180, "lt": "raktai.", "en": "keys are."}, {"s": 872480, "e": 872740, "lt": "Taip.", "en": "Yes."}, {"s": 874900, "e": 877840, "lt": "O Nastė sako, kad jūs žinote, kas ateina pas", "en": "And Nastė says you know who comes to see"}, {"s": 877840, "e": 879070, "lt": "direktorių?", "en": "the director?"}, {"s": 879070, "e": 881720, "lt": "Taip. Atsiprašau, turiu atsiliepti.", "en": "Yes. Excuse me, I have to take this."}, {"s": 881720, "e": 883210, "lt": "Ant garsiakalbio.", "en": "On speaker."}, {"s": 883210, "e": 884950, "lt": "Audrius atvažiavo.", "en": "Audrius has arrived."}, {"s": 885150, "e": 887920, "lt": "Gerai, ačiū. – O kodėl jums apsauga praneša,", "en": "Okay, thank you. – And why does security tell you"}, {"s": 888070, "e": 889380, "lt": "kad Audrius atvažiavo?", "en": "when Audrius arrives?"}, {"s": 889380, "e": 890550, "lt": "Just in case.", "en": "Just in case."}, {"s": 890550, "e": 892080, "lt": "Just in case kas?", "en": "Just in case what?"}, {"s": 892080, "e": 895360, "lt": "Just in case. – O kam jums atsarginiai", "en": "Just in case. – And why do you need"}, {"s": 895850, "e": 896860, "lt": "raktai reikalingi?", "en": "the spare keys?"}, {"s": 896860, "e": 898400, "lt": "Just in case.", "en": "Just in case."}, {"s": 899360, "e": 902690, "lt": "Brigita, tai paskutinis klausimas. Ar žinote,", "en": "Brigita, this is the last question. Do you know"}, {"s": 903670, "e": 905310, "lt": "kur dabar yra Oskaras?", "en": "where the Oscar is right now?"}];
+const KEY = "byla1996-captions-v1";
+const $ = id => document.getElementById(id);
+const v = $("v"), list = $("list"), tl = $("tl"), overlay = $("overlay");
+let cues, sel = 0, nowIdx = -1, playUntil = null, undoStack = [], mode = "lt", fresh = false, lastSeek = -1;
+
+function load(){ try{ const s = localStorage.getItem(KEY); if(s){ const d = JSON.parse(s); if(Array.isArray(d) && d.length) return d; } }catch(e){} return JSON.parse(JSON.stringify(ORIGINAL)); }
+let saveT; function persist(){ clearTimeout(saveT); saveT = setTimeout(()=>{ try{ localStorage.setItem(KEY, JSON.stringify(cues)); $("status").textContent = "Saved in this browser " + new Date().toLocaleTimeString(); }catch(e){ $("status").textContent = "Could not autosave. Use the Save buttons."; } }, 400); }
+function snap(){ undoStack.push(JSON.stringify(cues)); if(undoStack.length > 150) undoStack.shift(); }
+function undo(){ if(!undoStack.length) return; cues = JSON.parse(undoStack.pop()); sel = Math.min(sel, cues.length-1); render(); persist(); }
+
+const pad = (n,w=2) => String(n).padStart(w,"0");
+function fmt(ms){ ms = Math.max(0, Math.round(ms)); return Math.floor(ms/60000) + ":" + pad(Math.floor(ms/1000)%60) + "." + pad(Math.floor(ms%1000/10)); }
+function parse(s){ s = s.trim().replace(",", "."); if(!s) return null; const p = s.split(":").map(Number); if(p.some(isNaN)) return null; let sec = 0; for(const x of p) sec = sec*60 + x; return Math.round(sec*1000); }
+function srtTime(ms){ ms = Math.max(0, Math.round(ms)); return pad(Math.floor(ms/3600000)) + ":" + pad(Math.floor(ms/60000)%60) + ":" + pad(Math.floor(ms/1000)%60) + "," + pad(ms%1000,3); }
+function wrap(t){ t = t.replace(/\s+/g," ").trim(); if(t.length <= 42) return t; const mid = t.length/2; let best = -1; for(let i=0;i<t.length;i++) if(t[i]===" " && (best<0 || Math.abs(i-mid) < Math.abs(best-mid))) best = i; return best<0 ? t : t.slice(0,best) + "\n" + t.slice(best+1); }
+function toSrt(k){ const rows = cues.filter(c => (c[k]||"").trim()).slice().sort((a,b)=>a.s-b.s); return rows.map((c,i)=> (i+1) + "\n" + srtTime(c.s) + " --> " + srtTime(c.e) + "\n" + wrap(c[k]) + "\n").join("\n"); }
+function download(name, text){ const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], {type:"text/plain;charset=utf-8"})); a.download = name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+
+function esc(s){ return String(s).replace(/[&<>"]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m])); }
+function grow(t){ t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; }
+function flag(t){ t.classList.toggle("flag", /\[(neaišku|unclear)/i.test(t.value) || !t.value.trim()); }
+
+function render(){
+  let h = "", opts = "";
+  cues.forEach((c,i)=>{
+    if(c.scene != null){ h += '<div class="scene" data-s="'+i+'"><input value="'+esc(c.scene)+'" aria-label="Scene name" data-i="'+i+'"></div>'; opts += '<option value="'+i+'">'+esc(c.scene || "Scene")+" ("+fmt(c.s)+")</option>"; }
+    h += '<div class="row'+(i===sel?" sel":"")+'" data-i="'+i+'">'
+      + '<div class="times"><input class="ts" value="'+fmt(c.s)+'" aria-label="Start time"><input class="te" value="'+fmt(c.e)+'" aria-label="End time"></div>'
+      + '<div class="txt"><textarea class="lt" rows="1" lang="lt" placeholder="Lithuanian">'+esc(c.lt||"")+'</textarea><textarea class="en" rows="1" lang="en" placeholder="English">'+esc(c.en||"")+'</textarea></div>'
+      + '<div class="acts"><button data-a="play">Play this line</button><button data-a="s">Start = now</button><button data-a="e">End = now</button><button data-a="split">Split at cursor</button><button data-a="merge">Join with next</button><button data-a="scene">'+(c.scene!=null?"Remove scene start":"Scene starts here")+'</button><button data-a="del" class="danger">Delete</button></div>'
+      + '</div>';
+  });
+  list.innerHTML = h; $("scenes").innerHTML = opts; $("count").textContent = cues.length + " captions";
+  list.querySelectorAll("textarea").forEach(t => { grow(t); flag(t); });
+  nowIdx = -1;
+}
+function rowEl(i){ return list.querySelector('.row[data-i="'+i+'"]'); }
+function select(i, scroll){ if(i<0 || i>=cues.length) return; let sc = -1; for(let j=i;j>=0;j--) if(cues[j].scene!=null){ sc = j; break; } if(sc>=0) $("scenes").value = sc; const o = rowEl(sel); if(o) o.classList.remove("sel"); sel = i; const r = rowEl(i); if(r){ r.classList.add("sel"); r.querySelectorAll("textarea").forEach(grow); if(scroll) r.scrollIntoView({block:"center", behavior:"smooth"}); } }
+function refreshTimes(i){ const r = rowEl(i); if(!r) return; r.querySelector(".ts").value = fmt(cues[i].s); r.querySelector(".te").value = fmt(cues[i].e); }
+const cur = () => v.currentTime*1000;
+function seek(ms){ if(v.readyState) v.currentTime = Math.max(0, ms/1000); }
+function playLine(i){ const c = cues[i]; seek(c.s); playUntil = c.e; v.play().catch(()=>{}); }
+
+function splitText(t, pos){ t = t || ""; if(pos<=0 || pos>=t.length) pos = Math.round(t.length/2); let l = t.lastIndexOf(" ", pos), r = t.indexOf(" ", pos); if(t[pos]!==" " && t[pos-1]!==" "){ if(l<0 && r<0){} else if(l<0) pos = r; else if(r<0) pos = l; else pos = (pos-l <= r-pos) ? l : r; } return [t.slice(0,pos).trim(), t.slice(pos).trim()]; }
+function split(i){
+  const c = cues[i], r = rowEl(i), a = document.activeElement;
+  let k = (a && a.tagName==="TEXTAREA" && r.contains(a)) ? (a.classList.contains("en") ? "en" : "lt") : (mode==="en" ? "en" : "lt");
+  const o = k==="lt" ? "en" : "lt", len = (c[k]||"").length;
+  let pos = (a && a.tagName==="TEXTAREA" && r.contains(a)) ? a.selectionStart : Math.round(len/2);
+  if(pos<=0 || pos>=len) pos = Math.round(len/2);
+  const ratio = len ? pos/len : .5;
+  snap();
+  const [k1,k2] = splitText(c[k], pos), [o1,o2] = splitText(c[o], Math.round((c[o]||"").length*ratio));
+  const t = cur(); const at = (t > c.s+200 && t < c.e-200) ? t : c.s + (c.e-c.s)*ratio;
+  const A = {s:c.s, e:Math.round(at)-20, [k]:k1, [o]:o1}, B = {s:Math.round(at), e:c.e, [k]:k2, [o]:o2};
+  if(c.scene != null) A.scene = c.scene;
+  cues.splice(i, 1, A, B); render(); select(i+1); persist(); lastSeek = i+1;
+  const nt = rowEl(i+1).querySelector("textarea."+k); nt.focus(); nt.setSelectionRange(0,0);
+}
+function merge(i){ if(i >= cues.length-1) return; snap(); const a = cues[i], b = cues[i+1]; a.lt = [a.lt,b.lt].filter(Boolean).join(" "); a.en = [a.en,b.en].filter(Boolean).join(" "); a.e = Math.max(a.e,b.e); cues.splice(i+1,1); render(); select(i); persist(); }
+function addHere(){ snap(); const t = Math.round(cur()); let i = cues.findIndex(c => c.s > t); if(i<0) i = cues.length; const nxt = cues[i]; cues.splice(i, 0, {s:t, e: Math.min(t+2000, nxt ? Math.max(nxt.s-20, t+400) : t+2000), lt:"", en:""}); render(); select(i, true); persist(); rowEl(i).querySelector("textarea."+(mode==="en"?"en":"lt")).focus(); }
+function setEdge(i, which){ snap(); const c = cues[i], t = Math.round(cur()); if(which==="s"){ c.s = Math.min(t, c.e-200); } else { c.e = Math.max(t, c.s+200); } refreshTimes(i); persist(); }
+
+list.addEventListener("click", e => {
+  const r = e.target.closest(".row"); if(!r) return; const i = +r.dataset.i, b = e.target.closest("button");
+  if(i !== sel) select(i);
+  if(!b && e.target.tagName!=="INPUT" && i !== lastSeek){ lastSeek = i; playUntil = null; seek(cues[i].s + 10); }
+  if(!b) return; const a = b.dataset.a;
+  if(a==="play") playLine(i); else if(a==="s"||a==="e") setEdge(i,a); else if(a==="split") split(i); else if(a==="merge") merge(i);
+  else if(a==="del"){ snap(); const sc = cues[i].scene; cues.splice(i,1); if(sc!=null && cues[i] && cues[i].scene==null) cues[i].scene = sc; sel = Math.min(i, cues.length-1); render(); persist(); }
+  else if(a==="scene"){ snap(); if(cues[i].scene!=null) delete cues[i].scene; else cues[i].scene = "New scene"; render(); persist(); }
+});
+list.addEventListener("focusin", e => { const r = e.target.closest(".row"); if(r){ if(+r.dataset.i !== sel) select(+r.dataset.i); } fresh = true; });
+list.addEventListener("input", e => {
+  const t = e.target;
+  if(fresh && (t.tagName==="TEXTAREA" || t.closest(".scene"))){ snap(); fresh = false; }
+  if(t.tagName==="TEXTAREA"){ const i = +t.closest(".row").dataset.i; cues[i][t.classList.contains("en")?"en":"lt"] = t.value; grow(t); flag(t); nowIdx = -1; persist(); }
+  else if(t.closest(".scene")){ cues[+t.dataset.i].scene = t.value; persist(); }
+});
+list.addEventListener("change", e => {
+  const t = e.target, r = t.closest(".row"); if(!r || t.tagName!=="INPUT") return; const i = +r.dataset.i, ms = parse(t.value);
+  if(ms != null){ snap(); if(t.classList.contains("ts")) cues[i].s = Math.min(ms, cues[i].e-100); else cues[i].e = Math.max(ms, cues[i].s+100); persist(); }
+  refreshTimes(i);
+  if(t.closest(".scene")) render();
+});
+list.addEventListener("focusout", e => { if(e.target.closest(".scene")){ const o = $("scenes"); let h=""; cues.forEach((c,i)=>{ if(c.scene!=null) h += '<option value="'+i+'">'+esc(c.scene||"Scene")+" ("+fmt(c.s)+")</option>"; }); o.innerHTML = h; } });
+list.addEventListener("keydown", e => {
+  const t = e.target; if(e.key==="Escape"){ t.blur(); return; }
+  if(t.tagName==="TEXTAREA" && e.key==="Enter"){ e.preventDefault(); if(e.metaKey||e.ctrlKey) split(+t.closest(".row").dataset.i); }
+  if(t.tagName==="INPUT" && e.key==="Enter"){ t.blur(); }
+});
+$("scenes").addEventListener("change", e => { const i = +e.target.value; select(i, true); playUntil = null; seek(cues[i].s); });
+
+document.addEventListener("keydown", e => {
+  const a = document.activeElement, typing = a && (a.tagName==="TEXTAREA" || a.tagName==="INPUT" || a.tagName==="SELECT");
+  if(typing) return;
+  if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==="z"){ e.preventDefault(); undo(); return; }
+  if(e.metaKey||e.ctrlKey||e.altKey) return;
+  if(e.code==="Space"){ e.preventDefault(); toggle(); }
+  else if(e.key==="ArrowLeft"){ e.preventDefault(); seek(cur()-1000); }
+  else if(e.key==="ArrowRight"){ e.preventDefault(); seek(cur()+1000); }
+  else if(e.key==="ArrowUp"){ e.preventDefault(); select(sel-1,true); seek(cues[sel].s+10); }
+  else if(e.key==="ArrowDown"){ e.preventDefault(); select(sel+1,true); seek(cues[sel].s+10); }
+  else if(e.key==="["){ setEdge(sel,"s"); } else if(e.key==="]"){ setEdge(sel,"e"); }
+});
+
+function toggle(){ playUntil = null; if(v.paused) v.play().catch(()=>{}); else v.pause(); }
+$("play").onclick = toggle; $("back").onclick = () => seek(cur()-2000); $("fwd").onclick = () => seek(cur()+2000);
+$("rate").onchange = e => v.playbackRate = +e.target.value; $("add").onclick = addHere; $("undo").onclick = undo;
+v.addEventListener("click", toggle);
+v.addEventListener("play", () => $("play").textContent = "Pause"); v.addEventListener("pause", () => $("play").textContent = "Play");
+function setMode(m){ mode = m; document.body.className = "m-"+m; $("mLt").classList.toggle("on", m==="lt"); $("mEn").classList.toggle("on", m==="en"); $("mBoth").classList.toggle("on", m==="both"); list.querySelectorAll("textarea").forEach(grow); nowIdx = -1; }
+$("mLt").onclick = () => setMode("lt"); $("mEn").onclick = () => setMode("en"); $("mBoth").onclick = () => setMode("both");
+$("saveLt").onclick = () => download("BYLA NR 1996 - subtitrai.srt", toSrt("lt"));
+$("saveEn").onclick = () => download("BYLA NR 1996 - subtitles EN.srt", toSrt("en"));
+let resetArm; $("reset").onclick = e => { const b = e.target; if(b.dataset.arm){ snap(); cues = JSON.parse(JSON.stringify(ORIGINAL)); sel = 0; render(); persist(); b.textContent = "Reset all"; delete b.dataset.arm; } else { b.dataset.arm = 1; b.textContent = "Click again to reset everything"; clearTimeout(resetArm); resetArm = setTimeout(()=>{ b.textContent = "Reset all"; delete b.dataset.arm; }, 4000); } };
+
+/* video loading: try the file next to this page first, then ask */
+function useFile(f){ if(!f) return; v.src = URL.createObjectURL(f); $("drop").hidden = true; }
+$("pick").onclick = $("pick2").onclick = () => $("file").click();
+$("file").onchange = e => useFile(e.target.files[0]);
+["dragover","drop"].forEach(n => document.addEventListener(n, e => { e.preventDefault(); if(n==="drop" && e.dataTransfer.files[0]) useFile(e.dataTransfer.files[0]); }));
+v.addEventListener("loadedmetadata", () => { $("drop").hidden = true; });
+v.addEventListener("error", () => { $("drop").hidden = false; });
+if(location.protocol === "file:") v.src = encodeURI("BYLA NR 1996.mp4");
+
+/* timeline */
+const SPAN = 12000, LEAD = 4000; let drag = null, frozenT0 = null;
+function drawTl(t){
+  const W = tl.clientWidth, t0 = drag ? frozenT0 : t - LEAD, px = W/SPAN; let h = "";
+  for(let s = Math.ceil(t0/1000)*1000; s < t0+SPAN; s += 1000){ if(s<0) continue; h += '<div class="tick" style="left:'+((s-t0)*px)+'px">'+(s%2000===0 ? fmt(s).slice(0,-3) : "")+'</div>'; }
+  cues.forEach((c,i) => { if(c.e < t0 || c.s > t0+SPAN) return; const k = mode==="en" ? "en" : "lt"; h += '<div class="blk'+(i===sel?" cur":"")+'" data-i="'+i+'" style="left:'+((c.s-t0)*px)+'px;width:'+Math.max(10,(c.e-c.s)*px)+'px"><div class="hl"></div>'+esc(c[k]||"")+'<div class="hr"></div></div>'; });
+  h += '<div class="head" style="left:'+((t-t0)*px)+'px"></div>'; tl.innerHTML = h;
+}
+tl.addEventListener("pointerdown", e => {
+  const b = e.target.closest(".blk"), px = tl.clientWidth/SPAN, t = cur();
+  if(!b){ const x = e.clientX - tl.getBoundingClientRect().left; playUntil = null; seek(t - LEAD + x/px); return; }
+  const i = +b.dataset.i; v.pause(); select(i, true); snap();
+  drag = {i, part: e.target.classList.contains("hl") ? "s" : e.target.classList.contains("hr") ? "e" : "m", x: e.clientX, s: cues[i].s, e: cues[i].e, px}; frozenT0 = t - LEAD; tl.setPointerCapture(e.pointerId);
+});
+tl.addEventListener("pointermove", e => {
+  if(!drag) return; const c = cues[drag.i], d = Math.round((e.clientX - drag.x)/drag.px);
+  if(drag.part==="s") c.s = Math.max(0, Math.min(drag.s + d, c.e - 150));
+  else if(drag.part==="e") c.e = Math.max(drag.e + d, c.s + 150);
+  else { const len = drag.e - drag.s; c.s = Math.max(0, drag.s + d); c.e = c.s + len; }
+  refreshTimes(drag.i);
+});
+const endDrag = () => { if(drag){ const i = drag.i, part = drag.part; drag = null; persist(); seek(part==="e" ? Math.max(cues[i].s, cues[i].e - 800) : cues[i].s); } };
+tl.addEventListener("pointerup", endDrag); tl.addEventListener("pointercancel", endDrag);
+
+function frame(){
+  const t = cur();
+  if(playUntil != null && t >= playUntil){ v.pause(); playUntil = null; }
+  $("clock").textContent = fmt(t) + (v.duration ? " / " + fmt(v.duration*1000).slice(0,-3) : "");
+  let idx = -1; for(let i=0;i<cues.length;i++){ if(t >= cues[i].s && t < cues[i].e){ idx = i; break; } }
+  if(idx !== nowIdx){
+    const o = list.querySelector(".row.now"); if(o) o.classList.remove("now");
+    nowIdx = idx;
+    if(idx < 0) overlay.textContent = "";
+    else { const c = cues[idx]; overlay.innerHTML = mode==="both" ? esc(wrap(c.lt||"")) + '<span class="en">'+esc(c.en||"")+"</span>" : esc(wrap(c[mode]||""));
+      const r = rowEl(idx); if(r){ r.classList.add("now"); const a = document.activeElement; if(!v.paused && !(a && (a.tagName==="TEXTAREA"||a.tagName==="INPUT"))){ select(idx); r.scrollIntoView({block:"center", behavior:"smooth"}); } } }
+  }
+  drawTl(t); requestAnimationFrame(frame);
+}
+cues = load(); render(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>
