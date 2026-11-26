@@ -255,7 +255,7 @@ $("file").onchange = e => useFile(e.target.files[0]);
 ["dragover","drop"].forEach(n => document.addEventListener(n, e => { e.preventDefault(); if(n==="drop" && e.dataTransfer.files[0]) useFile(e.dataTransfer.files[0]); }));
 v.addEventListener("loadedmetadata", () => { $("drop").hidden = true; });
 v.addEventListener("error", () => { $("drop").hidden = false; });
-if(location.protocol === "file:") v.src = encodeURI("BYLA NR 1996.mp4");
+v.src = location.protocol === "file:" ? encodeURI("BYLA NR 1996.mp4") : "video.mp4";
 
 /* timeline */
 const SPAN = 12000, LEAD = 4000; let drag = null, frozenT0 = null;
